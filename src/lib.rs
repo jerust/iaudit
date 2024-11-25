@@ -5,6 +5,7 @@ pub mod domain;
 pub mod dto;
 pub mod handler;
 pub mod helper;
+pub mod middleware;
 pub mod route;
 pub mod service;
 pub mod startup;
