@@ -44,6 +44,6 @@ pub fn init_subscriber<T>(subscriber: T)
 where
     T: Subscriber + Send + Sync,
 {
-    LogTracer::init().expect("Failed to init log tracer");
-    subscriber::set_global_default(subscriber).expect("Failed to set global subscriber");
+    LogTracer::init().expect("初始化日志追踪器失败");
+    subscriber::set_global_default(subscriber).expect("设置全局日志追踪器失败");
 }

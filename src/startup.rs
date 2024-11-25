@@ -32,13 +32,10 @@ impl Application {
         let qdrant = configuration
             .qdrant
             .get_qdrant_client()
-            .expect("Failed to build qdrant client from url");
+            .expect("构建向量数据库客户端失败");
 
         // 对qdrant客户端健康状况进行检查, 如果有异常就直接退出应用程序
-        qdrant
-            .health_check()
-            .await
-            .expect("Qdrant service is unhealthy");
+        qdrant.health_check().await.expect("向量数据库健康检查异常");
 
         let itools = configuration.itools;
 
