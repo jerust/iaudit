@@ -4,3 +4,28 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+config = { version = "0.14.1" }
+qdrant-client = { version = "1.12.1" }
+serde = { version = "1.0.214", features = ["derive"] }
+
+[dependencies.secrecy]
+version = "0.10.3"
+default-features = false
+features = ["serde"]
+
+[dependencies.sqlx]
+version = "0.8.2"
+default-features = false
+features = [
+    "runtime-tokio-rustls",
+    "macros",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate",
+]
+
+[dependencies.tracing]
+version = "0.1.40"
+default-features = false
+features = ["log"]
