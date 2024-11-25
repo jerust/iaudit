@@ -1,0 +1,18 @@
+2024-11-25T15:20:29.131897Z  WARN Failed to open `.pgpass` file: Os { code: 2, kind: NotFound, message: "No such file or directory" } path=/Users/go2rust/.pgpass
+2024-11-25T15:20:29.142156Z  INFO starting 8 workers
+2024-11-25T15:20:29.142280Z  INFO Tokio runtime found; starting in existing Tokio runtime
+2024-11-25T15:20:29.142340Z  INFO starting service: "actix-web-service-127.0.0.1:8800", workers: 8, listening on: 127.0.0.1:8800
+2024-11-25T15:20:55.885862Z  INFO SIGINT received; starting forced shutdown
+2024-11-25T15:20:55.886452Z  INFO shutting down idle worker
+2024-11-25T15:20:55.886519Z  INFO shutting down idle worker
+2024-11-25T15:20:55.886527Z  INFO shutting down idle worker
+2024-11-25T15:20:55.887084Z  INFO shutting down idle worker
+2024-11-25T15:20:55.887168Z  INFO shutting down idle worker
+2024-11-25T15:20:55.887216Z  INFO shutting down idle worker
+2024-11-25T15:20:55.887281Z  INFO shutting down idle worker
+2024-11-25T15:20:55.887295Z  INFO accept thread stopped
+2024-11-25T15:20:55.887340Z  INFO shutting down idle worker
+2024-11-25T15:21:11.775558Z  WARN Failed to open `.pgpass` file: Os { code: 2, kind: NotFound, message: "No such file or directory" } path=/Users/go2rust/.pgpass
+2024-11-25T15:21:11.781331Z  INFO starting 8 workers
+2024-11-25T15:21:11.781464Z  INFO Tokio runtime found; starting in existing Tokio runtime
+2024-11-25T15:21:11.781521Z  INFO starting service: "actix-web-service-127.0.0.1:8800", workers: 8, listening on: 127.0.0.1:8800
