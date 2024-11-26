@@ -12,6 +12,7 @@ use tracing_actix_web::TracingLogger;
 use crate::configuration::common::CommonSettings;
 use crate::configuration::itools::ItoolsSettings;
 use crate::configuration::setting::Settings;
+use crate::route::document::register_document_route;
 
 pub struct Application {
     server: Server,
@@ -89,6 +90,7 @@ pub fn run(
                 .app_data(pgpool.clone())
                 .app_data(qdrant.clone())
                 .app_data(json_configuration)
+                .service(register_document_route())
         }
     })
     .listen(listener)?

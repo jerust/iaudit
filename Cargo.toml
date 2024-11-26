@@ -14,7 +14,6 @@ chrono = { version = "0.4.38" }
 config = { version = "0.14.1" }
 futures = { version = "0.3.31" }
 murmurhash64 = { version = "0.3.1" }
-tempfile = { version = "3.14.0" }
 thiserror = { version = "2.0.0" }
 once_cell = { version = "1.20.2" }
 qdrant-client = { version = "1.12.1" }
@@ -48,3 +47,6 @@ features = ["registry", "env-filter"]
 [dependencies.tokio]
 version = "1.41.0"
 features = ["macros", "rt-multi-thread", "rt"]
+
+[dev-dependencies]
+tempfile = { version = "3.14.0" }
