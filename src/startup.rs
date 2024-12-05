@@ -1,10 +1,12 @@
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::time::Duration;
 
 use actix_web::dev::Server;
 use actix_web::web::{Data, JsonConfig};
 use actix_web::{error, App, HttpResponse, HttpServer};
 use qdrant_client::Qdrant;
+use reqwest::Client;
 use sqlx::PgPool;
 use tokio::sync::Mutex;
 use tracing_actix_web::TracingLogger;
@@ -33,16 +35,21 @@ impl Application {
         let qdrant = configuration
             .qdrant
             .get_qdrant_client()
-            .expect("构建向量数据库客户端失败");
+            .expect("Failed to build qdrant client");
+
+        let client = configuration
+            .client
+            .get_proxy_client()
+            .expect("Failed to build proxy client");
 
         // 对qdrant客户端健康状况进行检查, 如果有异常就直接退出应用程序
-        qdrant.health_check().await.expect("向量数据库健康检查异常");
+        // qdrant.health_check().await.expect("向量数据库健康检查异常");
 
         let itools = configuration.itools;
 
         let common = configuration.common;
 
-        let server = run(listener, pgpool, qdrant, itools, common)?;
+        let server = run(listener, pgpool, qdrant, client, itools, common)?;
 
         Ok(Self { server, port })
     }
@@ -71,10 +78,12 @@ pub fn run(
     listener: TcpListener,
     pgpool: PgPool,
     qdrant: Qdrant,
+    client: Client,
     itools: ItoolsSettings,
     common: CommonSettings,
 ) -> Result<Server, std::io::Error> {
     let server = HttpServer::new({
+        let client = Data::new(client);
         let common = Data::new(common);
         let itools = Data::new(itools);
         let pgpool = Data::new(pgpool);
@@ -85,10 +94,11 @@ pub fn run(
 
             App::new()
                 .wrap(TracingLogger::default())
-                .app_data(common.clone())
-                .app_data(itools.clone())
                 .app_data(pgpool.clone())
                 .app_data(qdrant.clone())
+                .app_data(itools.clone())
+                .app_data(common.clone())
+                .app_data(client.clone())
                 .app_data(json_configuration)
                 .service(register_document_route())
         }

@@ -2,12 +2,10 @@ use std::sync::Arc;
 
 use actix_multipart::form::MultipartForm;
 use actix_web::web::Data;
-// use actix_web::web::Path;
 use actix_web::Responder;
-use anyhow::Context;
 use qdrant_client::Qdrant;
+use reqwest::Client;
 use tokio::sync::Mutex;
-use tokio::task;
 use tracing::Instrument;
 
 use crate::blunder::document::DocumentError;
@@ -17,8 +15,8 @@ use crate::dto::request::document::thinktank::UploadRequest;
 use crate::service::document::thinktank;
 
 #[tracing::instrument(
-    name = "上传审计智库文档",
-    skip(form, qdrant, itools, common),
+    name = "Upload audit thinktank document",
+    skip(form, qdrant, itools, common, client),
     fields(
         fileuuid=%form.uuid.as_str(),
         filename=%form.name.as_str(),
@@ -30,25 +28,26 @@ pub async fn upload(
     qdrant: Data<Arc<Mutex<Qdrant>>>,
     itools: Data<ItoolsSettings>,
     common: Data<CommonSettings>,
+    client: Data<Client>,
 ) -> Result<impl Responder, DocumentError> {
     let domain = form
         .into_inner()
         .try_into()
         .map_err(DocumentError::ValidationError)?;
-    task::spawn(
+
+    tokio::spawn(
         async move {
-            if let Err(error) = thinktank::upload(domain, &qdrant, &itools, &common)
+            thinktank::upload(domain, &qdrant, &itools, &common, &client)
                 .await
-                .context("后台上传审计智库文档失败")
-            {
-                // 对于通过spawn创建的后台新任务, 需要显式调用chain方法来追踪错误链路
-                for (i, cause) in error.chain().enumerate() {
-                    tracing::error!(error = cause, "Error #{} in error chain", i);
-                }
-            }
+                .map_err(|error| {
+                    // error = %error, 只会记录最顶层错误
+                    // error = ?error, 会记录完整的错误链
+                    tracing::error!(error = ?error);
+                })
         }
-        // 将当前跨度传递给新任务, 这样可以让任务继承当前上下文的tracing信息
-        .instrument(tracing::Span::current()),
+        // 创建独立的任务上下文, 并将跨度传递给新任务, 这样可以让任务继承当前上下文的tracing信息
+        .instrument(tracing::info_span!("Upload audit thinktank document task")),
     );
+
     Ok("rust")
 }

@@ -4,6 +4,7 @@ use config::{Config, ConfigError};
 use serde::Deserialize;
 
 use crate::configuration::application::ApplicationSettings;
+use crate::configuration::client::ClientSettings;
 use crate::configuration::common::CommonSettings;
 use crate::configuration::itools::ItoolsSettings;
 use crate::configuration::postgres::PostgresSettings;
@@ -45,6 +46,7 @@ pub struct Settings {
     pub qdrant: QdrantSettings,
     pub itools: ItoolsSettings,
     pub common: CommonSettings,
+    pub client: ClientSettings,
 }
 
 pub fn get_configuration() -> Result<Settings, ConfigError> {

@@ -3,7 +3,7 @@ use std::fmt::{Formatter, Result};
 
 pub fn errorchain(error: &impl Error, formatter: &mut Formatter<'_>) -> Result {
     // 将exception.message中的信息引入到exception.details开头
-    // writeln!(formatter, "{}\n", error)?;
+    writeln!(formatter, "{}\n", error)?;
 
     // 错误堆栈跟踪, 直到找到错误源头
     let mut current = error.source();

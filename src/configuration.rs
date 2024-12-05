@@ -1,4 +1,5 @@
 pub mod application;
+pub mod client;
 pub mod common;
 pub mod itools;
 pub mod postgres;
