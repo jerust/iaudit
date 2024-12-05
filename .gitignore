@@ -1,5 +1,6 @@
-/target
-/configuration
+.DS_Store
 /logs
 /cache
-.DS_Store
+/deploy
+/target
+/configuration
