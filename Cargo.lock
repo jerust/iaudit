@@ -1422,6 +1422,7 @@ dependencies = [
  "murmurhash64",
  "once_cell",
  "qdrant-client",
+ "regex",
  "reqwest",
  "secrecy",
  "serde",
