@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::{ensure, Context};
-use reqwest::{IntoUrl, Response};
+use reqwest::{Client, IntoUrl, Response};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -61,10 +61,45 @@ struct Reading {
 }
 
 /// 文档类型转换
-pub async fn document_convertor() {}
+pub async fn document_convertor<S: AsRef<str>>(
+    client: &Client,
+    proxy: S,
+    value: Value,
+) -> Result<(), anyhow::Error> {
+    let response = client
+        .post(proxy.as_ref())
+        .json(&value)
+        .send()
+        .await
+        .with_context(|| format!("Failed to call proxy of {}", proxy.as_ref()))?;
+    check_if_response_succeed(&response)?;
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct DocumentExtractor {
+    content: String,
+}
 
 /// 文档内容提取
-pub async fn document_extractor() {}
+pub async fn document_extractor(
+    client: &Client,
+    proxy: &str,
+    value: Value,
+) -> Result<String, anyhow::Error> {
+    let response = client
+        .post(proxy)
+        .json(&value)
+        .send()
+        .await
+        .with_context(|| format!("Failed to call proxy of {}", proxy))?;
+    check_if_response_succeed(&response)?;
+    let document_extractor = response
+        .json::<DocumentExtractor>()
+        .await
+        .with_context(|| format!("Failed to deserialize response body of {}", proxy))?;
+    Ok(document_extractor.content)
+}
 
 macro_rules! reading_macro {
     ($name:ident) => {
