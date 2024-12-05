@@ -43,11 +43,11 @@ pub async fn upload(
         .file
         .persist(filepath.as_path())
         .await
-        .with_context(|| format!("Failed to save document of {:?}", filepath))?;
+        .with_context(|| format!("Failed to save document to local of {:?}", filepath))?;
 
     let absolute = tokio::fs::canonicalize(filepath.as_path())
         .await
-        .with_context(|| format!("Failed to get absolute of {:?}", filepath))?;
+        .with_context(|| format!("Failed to get absolute filepath for {:?}", filepath))?;
 
     let converted = document_convertor(client, absolute, extension.as_ref(), itools)
         .await
