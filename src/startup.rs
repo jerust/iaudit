@@ -1,6 +1,5 @@
 use std::net::TcpListener;
 use std::sync::Arc;
-use std::time::Duration;
 
 use actix_web::dev::Server;
 use actix_web::web::{Data, JsonConfig};

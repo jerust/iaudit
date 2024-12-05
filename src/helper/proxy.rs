@@ -1,12 +1,19 @@
-use std::time::Duration;
-
-use anyhow::{ensure, Context};
-use reqwest::{Client, IntoUrl, Response};
+use anyhow::{ensure, Context, Error};
+use reqwest::{Client, Response};
 use serde::Deserialize;
 use serde_json::Value;
 
-// 公共的响应检查函数
-fn check_if_response_succeed(response: &Response) -> Result<(), anyhow::Error> {
+async fn request_handler(client: &Client, proxy: &str, value: Value) -> Result<Response, Error> {
+    let response = client
+        .post(proxy)
+        .json(&value)
+        .send()
+        .await
+        .with_context(|| format!("Failed to call proxy of {}", proxy))?;
+    Ok(response)
+}
+
+fn response_status_is_success(response: &Response) -> Result<(), Error> {
     ensure!(
         response.status().is_success(),
         "Failed to fetch {}, status: {}, headers: {:?}",
@@ -17,62 +24,9 @@ fn check_if_response_succeed(response: &Response) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// 公共的代理请求函数
-async fn proxy<Url: IntoUrl>(
-    url: Url,
-    value: Value,
-    duration: Duration,
-) -> Result<reqwest::Response, reqwest::Error> {
-    reqwest::Client::new()
-        .post(url)
-        .json(&value)
-        .timeout(duration)
-        .send()
-        .await
-}
-
-// 用于代理请求的宏
-macro_rules! proxy_request {
-    ($url:expr, $value:expr, $duration:expr) => {{
-        let response = proxy($url, $value, $duration)
-            .await
-            .with_context(|| format!("Failed to call proxy of {}", $url))?;
-        check_if_response_succeed(&response)?;
-        response
-    }};
-}
-
-macro_rules! regular_macro {
-    ($name:ident) => {
-        pub async fn $name<S: AsRef<str>>(
-            url: S,
-            value: Value,
-            duration: Duration,
-        ) -> Result<(), anyhow::Error> {
-            proxy_request!(url.as_ref(), value, duration);
-            Ok(())
-        }
-    };
-}
-
-#[derive(Deserialize)]
-struct Reading {
-    content: String,
-}
-
-/// 文档类型转换
-pub async fn document_convertor<S: AsRef<str>>(
-    client: &Client,
-    proxy: S,
-    value: Value,
-) -> Result<(), anyhow::Error> {
-    let response = client
-        .post(proxy.as_ref())
-        .json(&value)
-        .send()
-        .await
-        .with_context(|| format!("Failed to call proxy of {}", proxy.as_ref()))?;
-    check_if_response_succeed(&response)?;
+pub async fn document_convertor(client: &Client, proxy: &str, value: Value) -> Result<(), Error> {
+    let response = request_handler(client, proxy, value).await?;
+    response_status_is_success(&response)?;
     Ok(())
 }
 
@@ -81,19 +35,13 @@ struct DocumentExtractor {
     content: String,
 }
 
-/// 文档内容提取
 pub async fn document_extractor(
     client: &Client,
     proxy: &str,
     value: Value,
-) -> Result<String, anyhow::Error> {
-    let response = client
-        .post(proxy)
-        .json(&value)
-        .send()
-        .await
-        .with_context(|| format!("Failed to call proxy of {}", proxy))?;
-    check_if_response_succeed(&response)?;
+) -> Result<String, Error> {
+    let response = request_handler(client, proxy, value).await?;
+    response_status_is_success(&response)?;
     let document_extractor = response
         .json::<DocumentExtractor>()
         .await
@@ -101,98 +49,59 @@ pub async fn document_extractor(
     Ok(document_extractor.content)
 }
 
-macro_rules! reading_macro {
-    ($name:ident) => {
-        pub async fn $name<S: AsRef<str>>(
-            url: S,
-            value: Value,
-            duration: Duration,
-        ) -> Result<String, anyhow::Error> {
-            let reading = proxy_request!(url.as_ref(), value, duration)
-                .json::<Reading>()
-                .await
-                .with_context(|| {
-                    format!("Failed to deserialize response body of {}", url.as_ref())
-                })?;
-            Ok(reading.content)
-        }
-    };
-}
-
 #[derive(Deserialize)]
-struct Embedding {
+struct DocumentEmbedding {
     vector: Vec<f32>,
 }
 
-macro_rules! embedding_macro {
-    ($name:ident) => {
-        pub async fn $name<S: AsRef<str>>(
-            url: S,
-            value: Value,
-            duration: Duration,
-        ) -> Result<Vec<f32>, anyhow::Error> {
-            let embedding = proxy_request!(url.as_ref(), value, duration)
-                .json::<Embedding>()
-                .await
-                .with_context(|| {
-                    format!("Failed to deserialize response body of {}", url.as_ref())
-                })?;
-            Ok(embedding.vector)
-        }
-    };
+pub async fn document_embedding(
+    client: &Client,
+    proxy: &str,
+    value: Value,
+) -> Result<Vec<f32>, Error> {
+    let response = request_handler(client, proxy, value).await?;
+    response_status_is_success(&response)?;
+    let document_embedding = response
+        .json::<DocumentEmbedding>()
+        .await
+        .with_context(|| format!("Failed to deserialize response body of {}", proxy))?;
+    Ok(document_embedding.vector)
 }
 
 #[derive(Deserialize)]
-struct Reranking {
+struct DocumentReranking {
     scores: Vec<f32>,
 }
 
-macro_rules! reranking_macro {
-    ($name:ident) => {
-        pub async fn $name<S: AsRef<str>>(
-            url: S,
-            value: Value,
-            duration: Duration,
-        ) -> Result<Vec<f32>, anyhow::Error> {
-            let reranking = proxy_request!(url.as_ref(), value, duration)
-                .json::<Reranking>()
-                .await
-                .with_context(|| {
-                    format!("Failed to deserialize response body of {}", url.as_ref())
-                })?;
-            Ok(reranking.scores)
-        }
-    };
+pub async fn document_reranking(
+    client: &Client,
+    proxy: &str,
+    value: Value,
+) -> Result<Vec<f32>, Error> {
+    let response = request_handler(client, proxy, value).await?;
+    response_status_is_success(&response)?;
+    let document_reranking = response
+        .json::<DocumentReranking>()
+        .await
+        .with_context(|| format!("Failed to deserialize response body of {}", proxy))?;
+    Ok(document_reranking.scores)
 }
 
 #[derive(Deserialize)]
-struct Splitting {
+struct DocumentSplitting {
     slices: Vec<String>,
 }
 
-macro_rules! splitting_macro {
-    ($name:ident) => {
-        pub async fn $name<S: AsRef<str>>(
-            url: S,
-            value: Value,
-            duration: Duration,
-        ) -> Result<Vec<String>, anyhow::Error> {
-            let splitting = proxy_request!(url.as_ref(), value, duration)
-                .json::<Splitting>()
-                .await
-                .with_context(|| {
-                    format!("Failed to deserialize response body of {}", url.as_ref())
-                })?;
-            Ok(splitting.slices)
-        }
-    };
+pub async fn document_splitting(
+    client: &Client,
+    proxy: &str,
+    value: Value,
+) -> Result<Vec<String>, Error> {
+    let response = request_handler(client, proxy, value).await?;
+    response_status_is_success(&response)?;
+    let document_splitting = response
+        .json::<DocumentSplitting>()
+        .await
+        .with_context(|| format!("Failed to deserialize response body of {}", proxy))?;
+    Ok(document_splitting.slices)
 }
-
-regular_macro!(convert_word_to_pdf);
-regular_macro!(convert_pdf_to_html);
-reading_macro!(reading_excel);
-reading_macro!(reading_docx);
-reading_macro!(reading_pdf);
-embedding_macro!(embedding);
-reranking_macro!(reranking);
-splitting_macro!(splitting);

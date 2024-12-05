@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::Context;
 use qdrant_client::Qdrant;
@@ -50,73 +49,56 @@ pub async fn upload(
         .await
         .with_context(|| format!("Failed to get absolute of {:?}", filepath))?;
 
-    let absolute = convert_document(absolute, extension.as_ref(), itools)
+    let converted = document_convertor(client, absolute, extension.as_ref(), itools)
         .await
-        .with_context(|| format!("Failed to convert document of {:?}", filepath))?;
+        .with_context(|| format!("Failed to run document convertor of {:?}", filepath))?;
 
-    let content = extract_document(absolute, extension.as_ref(), itools)
+    let extracted = document_extractor(client, converted, extension.as_ref(), itools)
         .await
-        .with_context(|| format!("Failed to extract document of {:?}", filepath))?;
-    println!("{}", content);
-
-    // if matches!(domain.name.extension().as_ref(), Extension::Xlsx) {
-    //     let content = proxy::reading_excel(
-    //         itools.excel_reader_proxy(),
-    //         json!({"filepath": absolute, "readmode": "table", "sheet": ""}),
-    //         Duration::from_secs(itools.proxy_timeout),
-    //     )
-    //     .await?;
-
-    //     let x = parse_json(content.as_str()).unwrap();
-    //     println!("{:?}", x);
-    // }
-
-    // if matches!(domain.name.extension().as_ref(), Extension::Doc) {
-    //     proxy::convert_word_to_pdf(
-    //         itools.word_to_pdf_proxy(),
-    //         json!({"filepath": absolute.as_path()}),
-    //         Duration::from_secs(itools.proxy_timeout),
-    //     )
-    //     .await
-    //     .with_context(|| format!("Failed to convert word to pdf of {:?}", absolute))?;
-
-    //     let content = proxy::reading_pdf(
-    //         itools.pdf_reader_proxy(),
-    //         json!({"filepath": absolute.with_extension("pdf")}),
-    //         Duration::from_secs(itools.proxy_timeout),
-    //     )
-    //     .await?;
-    //     println!("{}", content);
-
-    //     let vector = proxy::embedding(
-    //         itools.embedding_proxy(),
-    //         json!({"content": content}),
-    //         Duration::from_secs(itools.proxy_timeout),
-    //     )
-    //     .await?;
-    //     println!("{:?}", vector);
-    // }
+        .with_context(|| format!("Failed to run document extractor of {:?}", filepath))?;
+    println!("{}", extracted);
 
     Ok(())
 }
 
-use std::collections::HashMap;
-fn _parse_json(
-    json_str: &str,
-) -> Result<HashMap<String, Vec<HashMap<String, String>>>, serde_json::Error> {
-    // 解析最外层的 JSON 对象
-    let outer: HashMap<String, String> = serde_json::from_str(json_str)?;
-
-    let mut result = HashMap::new();
-
-    for (sheet_name, sheet_data) in outer {
-        // 解析内层的 JSON 数组
-        let rows: Vec<HashMap<String, String>> = serde_json::from_str(&sheet_data)?;
-        result.insert(sheet_name, rows);
+pub async fn document_convertor(
+    client: &Client,
+    filepath: PathBuf,
+    extension: &Extension,
+    itools: &ItoolsSettings,
+) -> Result<PathBuf, anyhow::Error> {
+    if !matches!(extension, Extension::Doc) {
+        return Ok(filepath);
     }
-
-    Ok(result)
+    proxy::document_convertor(
+        client,
+        &itools.word_to_pdf_proxy(),
+        json!({"filepath": filepath}),
+    )
+    .await?;
+    Ok(filepath.with_extension("pdf"))
 }
+
+pub async fn document_extractor(
+    client: &Client,
+    filepath: PathBuf,
+    extension: &Extension,
+    itools: &ItoolsSettings,
+) -> Result<String, anyhow::Error> {
+    let (proxy, value) = match extension {
+        Extension::Xls | Extension::Xlsx => (
+            itools.xlsx_reader_proxy(),
+            json!({"filepath": filepath, "readmode": "table", "sheet": ""}),
+        ),
+        Extension::Doc | Extension::Pdf => {
+            (itools.pdfx_reader_proxy(), json!({"filepath": filepath}))
+        }
+        Extension::Docx => (itools.docx_reader_proxy(), json!({"filepath": filepath})),
+    };
+    proxy::document_extractor(client, &proxy, value).await
+}
+
+pub async fn document_splitting() {}
 
 // 文档转换
 // 读文件内容
@@ -125,47 +107,21 @@ fn _parse_json(
 // 构造元数据
 // 写入向量库
 // 写入磁盘
+//
+// use std::collections::HashMap;
+// fn _parse_json(
+//     json_str: &str,
+// ) -> Result<HashMap<String, Vec<HashMap<String, String>>>, serde_json::Error> {
+//     // 解析最外层的 JSON 对象
+//     let outer: HashMap<String, String> = serde_json::from_str(json_str)?;
 
-pub async fn convert_document(
-    filepath: PathBuf,
-    extension: &Extension,
-    itools: &ItoolsSettings,
-) -> Result<PathBuf, anyhow::Error> {
-    if !matches!(extension, Extension::Doc) {
-        return Ok(filepath);
-    }
-    proxy::convert_word_to_pdf(
-        itools.word_to_pdf_proxy(),
-        json!({"filepath": filepath}),
-        Duration::from_secs(itools.proxy_timeout),
-    )
-    .await?;
-    Ok(filepath.with_extension("pdf"))
-}
+//     let mut result = HashMap::new();
 
-pub async fn extract_document(
-    filepath: PathBuf,
-    extension: &Extension,
-    itools: &ItoolsSettings,
-) -> Result<String, anyhow::Error> {
-    match extension {
-        Extension::Xls | Extension::Xlsx => Ok(proxy::reading_excel(
-            itools.excel_reader_proxy(),
-            json!({"filepath": filepath, "readmode": "table", "sheet": ""}),
-            Duration::from_secs(itools.proxy_timeout),
-        )
-        .await?),
-        Extension::Doc | Extension::Pdf => Ok(proxy::reading_excel(
-            itools.pdf_reader_proxy(),
-            json!({"filepath": filepath}),
-            Duration::from_secs(itools.proxy_timeout),
-        )
-        .await?),
-        Extension::Docx => Ok(proxy::reading_excel(
-            itools.docx_reader_proxy(),
-            json!({"filepath": filepath}),
-            Duration::from_secs(itools.proxy_timeout),
-        )
-        .await?),
-    }
-}
+//     for (sheet_name, sheet_data) in outer {
+//         // 解析内层的 JSON 数组
+//         let rows: Vec<HashMap<String, String>> = serde_json::from_str(&sheet_data)?;
+//         result.insert(sheet_name, rows);
+//     }
+
+//     Ok(result)
+// }
