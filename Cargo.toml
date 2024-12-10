@@ -10,6 +10,7 @@ path = "src/lib.rs"
 actix-web = { version = "4.9.0" }
 actix-multipart = { version = "0.7.2" }
 anyhow = { version = "1.0.93" }
+async-trait = { version = "0.1.83" }
 chrono = { version = "0.4.38" }
 config = { version = "0.14.1" }
 futures = { version = "0.3.31" }
@@ -22,6 +23,7 @@ reqwest = { version = "0.12.9", features = ["json", "rustls-tls"] }
 secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = { version = "1.0.132" }
+tonic = { version = "0.12.3" }
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-log = { version = "0.2.0" }
 tracing-appender = { version = "0.2.3" }

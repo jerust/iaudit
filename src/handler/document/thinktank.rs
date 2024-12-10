@@ -1,11 +1,8 @@
-use std::sync::Arc;
-
 use actix_multipart::form::MultipartForm;
 use actix_web::web::Data;
 use actix_web::Responder;
 use qdrant_client::Qdrant;
 use reqwest::Client;
-use tokio::sync::Mutex;
 use tracing::Instrument;
 
 use crate::blunder::document::DocumentError;
@@ -25,19 +22,18 @@ use crate::service::document::thinktank;
 )]
 pub async fn upload(
     form: MultipartForm<UploadRequest>,
-    qdrant: Data<Arc<Mutex<Qdrant>>>,
-    itools: Data<ItoolsSettings>,
-    common: Data<CommonSettings>,
     client: Data<Client>,
+    qdrant: Data<Qdrant>,
+    common: Data<CommonSettings>,
+    itools: Data<ItoolsSettings>,
 ) -> Result<impl Responder, DocumentError> {
     let domain = form
         .into_inner()
         .try_into()
         .map_err(DocumentError::ValidationError)?;
-
     tokio::spawn(
         async move {
-            thinktank::upload(domain, &qdrant, &itools, &common, &client)
+            thinktank::upload(domain, &client, &qdrant, &common, &itools)
                 .await
                 .map_err(|error| {
                     // error = %error, 只会记录最顶层错误
@@ -48,6 +44,5 @@ pub async fn upload(
         // 创建独立的任务上下文, 并将跨度传递给新任务, 这样可以让任务继承当前上下文的tracing信息
         .instrument(tracing::info_span!("Upload audit thinktank document task")),
     );
-
     Ok("rust")
 }
