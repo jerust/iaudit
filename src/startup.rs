@@ -1,5 +1,4 @@
 use std::net::TcpListener;
-use std::sync::Arc;
 
 use actix_web::dev::Server;
 use actix_web::web::{Data, JsonConfig};
@@ -7,7 +6,6 @@ use actix_web::{error, App, HttpResponse, HttpServer};
 use qdrant_client::Qdrant;
 use reqwest::Client;
 use sqlx::PgPool;
-use tokio::sync::Mutex;
 use tracing_actix_web::TracingLogger;
 
 use crate::configuration::common::CommonSettings;
@@ -86,7 +84,7 @@ pub fn run(
         let common = Data::new(common);
         let itools = Data::new(itools);
         let pgpool = Data::new(pgpool);
-        let qdrant = Data::new(Arc::new(Mutex::new(qdrant)));
+        let qdrant = Data::new(qdrant);
 
         move || {
             let json_configuration = build_json_configuration();
